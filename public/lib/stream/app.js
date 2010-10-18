@@ -12,8 +12,8 @@ if(typeof console == "undefined") {
   }
 }
 require.def("stream/app",
-  ["stream/tweetstream", "stream/tweet", "stream/settings", "stream/streamplugins", "stream/initplugins", "stream/linkplugins", "stream/settingsDialog", "stream/client", "stream/status", "stream/versionControl", "stream/tracking", "stream/modernizr", "http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"],
-  function(tweetstream, tweetModule, settings, streamPlugin, initPlugin, linkPlugin, settingsDialog, client, status) {
+  ["stream/gTranslateProc", "stream/tweetstream", "stream/tweet", "stream/settings", "stream/streamplugins", "stream/initplugins", "stream/linkplugins", "stream/settingsDialog", "stream/client", "stream/status", "stream/versionControl", "stream/tracking", "stream/modernizr", "http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"],
+  function(gTranslateProc, tweetstream, tweetModule, settings, streamPlugin, initPlugin, linkPlugin, settingsDialog, client, status) {
     
     // Stream plugins are called in the order defined here for each incoming tweet.
     // Important: Stream plugins have to call this() to continue the execution!
@@ -27,6 +27,7 @@ require.def("stream/app",
       streamPlugin.avoidDuplicates,
       streamPlugin.conversations,
       streamPlugin.mentions,
+      streamPlugin.translate,
       streamPlugin.template,
       streamPlugin.htmlEncode,
       streamPlugin.formatTweetText,
@@ -65,6 +66,7 @@ require.def("stream/app",
       status.autocomplete,
       status.shortenURLs,
       status.showJSON,
+      status.translateToggle,
       settingsDialog.init
     ];
     

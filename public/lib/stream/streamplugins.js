@@ -10,15 +10,25 @@ require.def("stream/streamplugins",
     settings.registerNamespace("stream", "Stream");
     settings.registerKey("stream", "showRetweets", "Show Retweets",  true);
     settings.registerKey("stream", "keepScrollState", "Keep scroll level when new tweets come in",  true); 
+    settings.registerKey("stream", "translate", "Automatically translate to your prefered language", false ); 
+    settings.registerKey("stream", "preferedLanguage", "Prefered language", "en", { "en": "English", "fr": "French" } ); 
     
     var template = _.template(templateText);
     
     var Tweets = {};
     var Conversations = {};
     var ConversationCounter = 0;
+
+    settings.subscribe("stream", "translate", function(value){
+      console.log("translate value is now "+value);
+      //window.location.reload();
+    });	
+    settings.subscribe("stream", "preferedLanguage", function(value){
+      console.log("preferedLanguage value is now "+value);
+      //window.location.reload();
+    });	
     
-    return {
-      
+    return {            
       // Turns direct messages into something similar to a tweet
       // Because Streamie uses a stream methaphor for everything it does not make sense to
       // make a special case for direct messages
@@ -102,7 +112,48 @@ require.def("stream/streamplugins",
           this();
         }
       },
-      
+
+      // translate 
+      translate: {
+        func: function translate (tweet, stream) {
+          // if stream.translate setting is disable, or translate has been already tried, do nothing and go on
+          if( settings.get("stream", "translate") == false || tweet.translateProcess ){
+            this();
+            return;
+          }
+          var dstLang	= settings.get("stream", "preferedLanguage");
+          var gtranslate_proc	= new gTranslateProc(tweet.data.text);
+          tweet.translateProcess= true;
+          google.language.translate(gtranslate_proc.prepared_text, "", dstLang, function(result){
+            //console.log("tweet to translate [", result, "] ", tweet);
+            if(result.error)	return;
+            var srcLang	= result.detectedSourceLanguage;
+            if( srcLang == dstLang )	return;
+            //console.log("[", srcLang, "] ", tweet.data.text)
+            //console.log("[", dstLang, "] ", result.translation);	    
+            /**
+             * - UI issue
+             *   - how to show users than this tweet as been translated
+             *   - how to show users that a translation is available
+             *   - how to allow translation back and forth
+             *     - toggle as tweet action is ok
+            */
+            tweet.translate	= {
+              srcLang	: srcLang,
+              curLang	: dstLang,
+              texts		: {}
+            }
+            var srcText	= tweet.data.text;
+            var dst_text	= gtranslate_proc.process_result(result.translation);
+            tweet.translate.texts[srcLang]	= srcText;
+            tweet.translate.texts[dstLang]	= dst_text;
+            // reprocess this tweet
+            stream.reProcess(tweet);
+      	  });
+          this();
+        }
+      },
+
       // set the tweet template
       template: {
         func: function templatePlugin (tweet) {
@@ -127,7 +178,9 @@ require.def("stream/streamplugins",
       avoidDuplicates: {
         func: function avoidDuplicates (tweet, stream) {
           var id = tweet.data.id;
-          if(Tweets[id]) {
+          if(Tweets[id] && tweet.streamDirty) {
+      	    this();
+      	  } else if(Tweets[id]) {
             // duplicate detected -> do not continue;
           } else {
             Tweets[id] = tweet;
@@ -179,9 +232,13 @@ require.def("stream/streamplugins",
       // put the tweet into the stream
       prepend: {
         func: function prepend (tweet, stream) {
+          var previous_node	= tweet.node;
           tweet.node = $(tweet.html);
           tweet.node.data("tweet", tweet); // give node access to its tweet
-          if(tweet.data._after) {
+          if( tweet.streamDirty ){
+            console.assert(previous_node);
+            previous_node.replaceWith(tweet.node);		
+          } else if(tweet.data._after) {
             var target = tweet.data._after;
             target.node.after(tweet.node);
             tweet.fetchNotInStream();
@@ -194,15 +251,14 @@ require.def("stream/streamplugins",
       
       // htmlencode the text to avoid XSS
       htmlEncode: {
-        GT_RE: /\&gt\;/g,
-        LT_RE: /\&lt\;/g,
-        QUOT_RE: /\&quot\;/g,
         func: function htmlEncode (tweet, stream, plugin) {
-          var text = tweet.data.text;
-          text = text.replace(plugin.GT_RE, ">"); // these are preencoded in Twitter tweets
-          text = text.replace(plugin.LT_RE, "<");
-          text = text.replace(plugin.QUOT_RE, '"'); // Some clients encode " to &quot; (only a few) If you're tweet contains the literal text &quot; you are out of luck
-          text = helpers.html(text);
+          if( ! tweet.translate ){
+            var text	= tweet.data.text;
+          }else{
+            var text	= tweet.translate.texts[tweet.translate.curLang];
+          }
+          text = helpers.htmlDecode(text);
+          text = helpers.htmlEncode(text);
           tweet.textHTML = text;
           this();
         }

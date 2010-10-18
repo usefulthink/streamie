@@ -8,6 +8,9 @@
 		<p class="text"><%= tweet.textHTML %></p>
 		<div class="time created_at"><a href="<%= h(tweet.direct_message ? 'http://twitter.com/direct_messages/create/'+tweet.data.sender.screen_name : 'http://twitter.com/'+tweet.data.user.screen_name+'/status/'+tweet.data.id) %>"></a></div>
 		<ul class="actions">
+		  <% if( tweet.translate ){ %>
+		    <li title="Translate" class="translate_toggle" tabindex="0"></li>
+		  <% } %>
 		  <li title="Retweet" class="retweet" tabindex="0"></li>
 		  <li title="Reply" class="reply" tabindex="0"></li>
 		  <li title="Quote" class="quote" tabindex="0"></li>
