@@ -131,6 +131,7 @@ require.def("stream/app",
             }
           };
           var socket = client.connect(connect);
+		  console.log("can we change the app.js - YES WE CAN!");
         })
       }
     }
